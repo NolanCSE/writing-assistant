@@ -65,3 +65,10 @@ export async function analyzeLogic(paperText) {
   }
   return request('/api/logical-analysis', { text: paperText });
 }
+
+export async function getFullAnalysis(paperText) {
+  if (!paperText || !paperText.trim()) {
+    throw new Error('Paper text is required');
+  }
+  return request('/api/full-analysis', { text: paperText });
+}

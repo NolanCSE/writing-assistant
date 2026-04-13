@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from config import get_settings
-from routers import analysis, rewrite, research, bibliography, logical_analysis
+from routers import analysis, rewrite, research, bibliography, logical_analysis, full_analysis, validity
 
 
 @asynccontextmanager
@@ -39,6 +39,8 @@ app.include_router(rewrite.router)
 app.include_router(research.router)
 app.include_router(bibliography.router)
 app.include_router(logical_analysis.router)
+app.include_router(full_analysis.router)
+app.include_router(validity.router)
 
 
 @app.get("/")
