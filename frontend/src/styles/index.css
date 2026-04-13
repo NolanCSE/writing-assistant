@@ -898,6 +898,8 @@ body {
   position: relative;
   flex: 1;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .paper-view {
@@ -937,6 +939,38 @@ body {
   filter: brightness(1.1);
 }
 
+.highlight.highlight-active {
+  box-shadow: 0 0 0 2px var(--primary);
+}
+
+.highlight.highlight-active.highlight-info {
+  background: rgba(37, 99, 235, 0.3);
+}
+
+.highlight.highlight-active.highlight-warning {
+  background: rgba(217, 119, 6, 0.3);
+}
+
+.highlight.highlight-active.highlight-error {
+  background: rgba(220, 38, 38, 0.25);
+}
+
+.highlight.highlight-active {
+  box-shadow: 0 0 0 2px var(--primary);
+}
+
+.highlight.highlight-active.highlight-info {
+  background: rgba(37, 99, 235, 0.3);
+}
+
+.highlight.highlight-active.highlight-warning {
+  background: rgba(217, 119, 6, 0.3);
+}
+
+.highlight.highlight-active.highlight-error {
+  background: rgba(220, 38, 38, 0.25);
+}
+
 .highlight-info {
   background: rgba(37, 99, 235, 0.1);
   border-bottom: 2px solid var(--primary);
@@ -944,6 +978,14 @@ body {
 
 .highlight-info:hover {
   background: rgba(37, 99, 235, 0.18);
+}
+
+.highlight-warning:hover {
+  background: rgba(217, 119, 6, 0.18);
+}
+
+.highlight-error:hover {
+  background: rgba(220, 38, 38, 0.15);
 }
 
 .highlight-info.highlight-active {
@@ -1566,6 +1608,82 @@ body {
   font-size: 0.75rem;
   color: var(--text-tertiary);
   margin-left: 8px;
+}
+
+/* === Issue Comment Popup (Google Docs-style) === */
+.issue-comment-popup {
+  position: absolute;
+  width: 380px;
+  max-height: 400px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.08);
+  z-index: 30;
+  overflow-y: auto;
+  padding: 16px;
+  animation: popIn 0.15s ease-out;
+}
+
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.issue-comment-popup::-webkit-scrollbar {
+  width: 6px;
+}
+
+.issue-comment-popup::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.issue-comment-popup::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+.issue-comment-popup::-webkit-scrollbar-thumb:hover {
+  background: var(--secondary);
+}
+
+.issue-comment-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition);
+  z-index: 1;
+}
+
+.issue-comment-close:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+/* === Issue Card (popup context) === */
+.issue-card {
+  padding: 0;
+}
+
+.issue-card-back {
+  margin-bottom: 12px;
+  font-size: 0.8125rem;
 }
 
 /* === Retry Button === */

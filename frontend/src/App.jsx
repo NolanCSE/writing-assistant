@@ -11,7 +11,6 @@ import OverviewTab from './components/OverviewTab';
 import ScoresPanel from './components/ScoresPanel';
 import ArgumentStructureTab from './components/ArgumentStructureTab';
 import BibliographyTab from './components/BibliographyTab';
-import IssueCard from './components/IssueCard';
 import ResearchTab from './components/ResearchTab';
 import './styles/index.css';
 
@@ -171,8 +170,11 @@ export default function App() {
               paperText={paperText}
               onPaperTextChange={setPaperText}
               issues={result?.issues || []}
-              selectedIssueId={selectedIssueId}
+              selectedIssue={selectedIssue}
               onIssueClick={handleIssueClick}
+              onBackToSummary={handleBackToSummary}
+              onApplyRewrite={handleApplyRewrite}
+              onRewriteApplied={() => setResultsStale(true)}
               isAnalyzing={loading}
               result={result}
               viewMode={viewMode}
@@ -239,16 +241,8 @@ export default function App() {
                   </div>
                 </div>
               ) : result ? (
-                selectedIssueId ? (
-                  <IssueCard
-                    issue={selectedIssue}
-                    onBack={handleBackToSummary}
-                    onApply={handleApplyRewrite}
-                    onRewriteApplied={() => setResultsStale(true)}
-                  />
-                ) : (
-                  <>
-                    <div className="sub-tab-bar">
+                <>
+                  <div className="sub-tab-bar">
                       {[
                         { id: 'overview', label: 'Overview' },
                         { id: 'scores', label: 'Scores' },
@@ -276,7 +270,6 @@ export default function App() {
                     {subTab === 'arguments' && <ArgumentStructureTab result={result} />}
                     {subTab === 'bibliography' && result.bibliography && <BibliographyTab result={result} />}
                   </>
-                )
               ) : (
                 <EmptyState tab="analysis" />
               )

@@ -1,5 +1,6 @@
-import { useRef, useEffect } from 'react';
-import { Edit3, Eye } from 'lucide-react';
+import { useRef, useEffect, useCallback } from 'react';
+import { Edit3, X } from 'lucide-react';
+import IssueCard from './IssueCard';
 
 function mapNormalizedToOriginal(paperText, normalizedPos) {
   let paperPos = 0;
@@ -86,7 +87,7 @@ function findSpanPosition(paperText, issue) {
   return null;
 }
 
-function buildHighlightedElements(paperText, issues, onIssueClick) {
+function buildHighlightedElements(paperText, issues, onIssueClick, selectedIssueId) {
   if (!issues || issues.length === 0) {
     return [paperText];
   }
@@ -136,10 +137,11 @@ function buildHighlightedElements(paperText, issues, onIssueClick) {
       );
     }
     const issueId = span.issueId;
+    const isActive = issueId === selectedIssueId;
     elements.push(
       <span
         key={`h-${keyIndex++}`}
-        className={`highlight highlight-${span.severity}`}
+        className={`highlight highlight-${span.severity}${isActive ? ' highlight-active' : ''}`}
         data-issue-id={issueId}
         data-category={span.category}
         onClick={() => onIssueClick(issueId)}
@@ -164,23 +166,97 @@ export default function PaperView({
   paperText,
   onPaperTextChange,
   issues,
-  selectedIssueId,
+  selectedIssue,
   onIssueClick,
+  onBackToSummary,
+  onApplyRewrite,
+  onRewriteApplied,
   isAnalyzing,
   viewMode,
   onToggleMode,
 }) {
-  const containerRef = useRef(null);
+  const paperViewRef = useRef(null);
+  const popupRef = useRef(null);
 
-  useEffect(() => {
-    if (!selectedIssueId || viewMode !== 'view') return;
-    const container = containerRef.current;
-    if (!container) return;
-    const highlight = container.querySelector(`[data-issue-id="${selectedIssueId}"]`);
-    if (highlight) {
-      highlight.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  // Position the popup next to the clicked highlight using direct DOM manipulation
+  const positionPopup = useCallback(() => {
+    const popup = popupRef.current;
+    if (!popup || !selectedIssue) {
+      if (popup) popup.style.display = 'none';
+      return;
     }
-  }, [selectedIssueId, viewMode]);
+
+    const paperView = paperViewRef.current;
+    if (!paperView) return;
+    const highlight = paperView.querySelector(`[data-issue-id="${selectedIssue.id}"]`);
+    if (!highlight) return;
+
+    // Get positions relative to the viewport
+    const highlightRect = highlight.getBoundingClientRect();
+    const popupParent = popup.parentElement; // .paper-view-container
+    const parentRect = popupParent.getBoundingClientRect();
+
+    const popupWidth = 380;
+    const popupGap = 12;
+
+    // Calculate highlight position relative to the popup's offset parent
+    const highlightRight = highlightRect.right - parentRect.left;
+    const highlightLeft = highlightRect.left - parentRect.left;
+    const parentWidth = parentRect.width;
+
+    // Try right of highlight first
+    let left = highlightRight + popupGap;
+    if (left + popupWidth > parentWidth) {
+      // Try left of highlight
+      left = highlightLeft - popupWidth - popupGap;
+      if (left < 0) {
+        // Center horizontally if no room on either side
+        left = Math.max(0, (parentWidth - popupWidth) / 2);
+      }
+    }
+
+    // Vertical position: align to highlight top, clamped to parent
+    const topInParent = highlightRect.top - parentRect.top;
+    const popupMaxHeight = 400;
+    const top = Math.max(0, Math.min(topInParent, parentRect.height - popupMaxHeight));
+
+    popup.style.display = 'block';
+    popup.style.left = `${left}px`;
+    popup.style.top = `${top}px`;
+  }, [selectedIssue]);
+
+  // Set up scroll/resize listeners for repositioning
+  useEffect(() => {
+    if (!selectedIssue) return;
+
+    // Position after render
+    requestAnimationFrame(positionPopup);
+
+    // Reposition on scroll
+    const paperView = paperViewRef.current;
+    if (paperView) {
+      paperView.addEventListener('scroll', positionPopup);
+    }
+    window.addEventListener('resize', positionPopup);
+
+    return () => {
+      if (paperView) {
+        paperView.removeEventListener('scroll', positionPopup);
+      }
+      window.removeEventListener('resize', positionPopup);
+    };
+  }, [selectedIssue, positionPopup]);
+
+  // Close popup on Escape key
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape' && selectedIssue) {
+        onBackToSummary();
+      }
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [selectedIssue, onBackToSummary]);
 
   const isViewMode = viewMode === 'view';
 
@@ -195,7 +271,8 @@ export default function PaperView({
     );
   }
 
-  const elements = buildHighlightedElements(paperText, issues, onIssueClick);
+  const selectedIssueId = selectedIssue?.id || null;
+  const elements = buildHighlightedElements(paperText, issues, onIssueClick, selectedIssueId);
 
   return (
     <div className="paper-view-container">
@@ -214,7 +291,7 @@ export default function PaperView({
           <p className="loading-text">Analyzing your paper...</p>
         </div>
       )}
-      <div ref={containerRef} className="paper-view">
+      <div ref={paperViewRef} className="paper-view">
         {elements}
       </div>
       {isViewMode && issues && issues.length > 0 && (
@@ -231,6 +308,28 @@ export default function PaperView({
             <span className="highlight-legend-swatch highlight-error"></span>
             <span>Error</span>
           </div>
+        </div>
+      )}
+
+      {selectedIssue && (
+        <div
+          className="issue-comment-popup"
+          ref={popupRef}
+          style={{ display: 'none' }}
+        >
+          <button
+            className="issue-comment-close"
+            onClick={onBackToSummary}
+            title="Close (Esc)"
+          >
+            <X size={14} />
+          </button>
+          <IssueCard
+            issue={selectedIssue}
+            onBack={onBackToSummary}
+            onApply={onApplyRewrite}
+            onRewriteApplied={onRewriteApplied}
+          />
         </div>
       )}
     </div>
