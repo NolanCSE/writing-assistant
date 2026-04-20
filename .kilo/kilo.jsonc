@@ -1,0 +1,24 @@
+{
+  "$schema": "https://app.kilo.ai/config.json",
+	"mcp": {
+		"github-issues": {
+			"type": "local",
+			"command": [
+				"docker",
+       				"run",
+			        "-i",
+			        "--rm",
+				"-e", "GITHUB_PERSONAL_ACCESS_TOKEN",
+				"ghcr.io/github/github-mcp-server",
+				"stdio",
+				"--read-only",
+				"--tools=search_issues,issue_read"
+			],
+			"environment": {
+				"GITHUB_PERSONAL_ACCESS_TOKEN": "{env:GITHUB_PAT}"
+			},
+			"enabled": true,
+			"timeout": 20000
+		}
+	}
+}

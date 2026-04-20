@@ -1,10 +1,12 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 import json
+import asyncio
 
 from config import get_settings
 from llm_client import LLMClient
-from prompts import get_full_analysis_prompts
+from prompts import get_full_analysis_prompts, get_research_prompts
+from .research import Source
 
 router = APIRouter(prefix="/api", tags=["full-analysis"])
 
@@ -87,6 +89,32 @@ class FullAnalysisResponse(BaseModel):
     counterargument_coverage: CounterargumentCoverage
     bibliography: BibliographyResult | None
     issues: list[Issue]
+    suggested_sources: list[Source] | None = None
+    research_summary: str | None = None
+
+
+async def run_research_safe(client: LLMClient, paper_text: str) -> tuple[str | None, list[Source] | None]:
+    """Run research in parallel, return None if it fails"""
+    try:
+        system_prompt, user_prompt = get_research_prompts(paper_text, "")
+        raw = await client.analyze(system_prompt, user_prompt)
+        
+        # Parse response (copy logic from research.py)
+        cleaned = raw.strip()
+        if cleaned.startswith("```"):
+            cleaned = cleaned.split("\n", 1)[1] if "\n" in cleaned else cleaned[3:]
+            if cleaned.endswith("```"):
+                cleaned = cleaned[:-3]
+            cleaned = cleaned.strip()
+        
+        data = json.loads(cleaned)
+        sources = [Source(**s) for s in data.get("sources", [])]
+        summary = data.get("research_summary")
+        return summary, sources
+    except Exception as e:
+        # Log but don't fail - research is optional
+        print(f"Auto-research failed: {e}")
+        return None, None
 
 
 @router.post("/full-analysis", response_model=FullAnalysisResponse)
@@ -100,7 +128,11 @@ async def full_analysis(request: FullAnalysisRequest):
     system_prompt, user_prompt = get_full_analysis_prompts(request.text)
 
     try:
-        raw_response = await client.analyze(system_prompt, user_prompt)
+        # Run both analysis and research in parallel
+        (raw_response, (research_summary, suggested_sources)) = await asyncio.gather(
+            client.analyze(system_prompt, user_prompt),
+            run_research_safe(client, request.text)
+        )
 
         cleaned = raw_response.strip()
         if cleaned.startswith("```"):
@@ -201,6 +233,8 @@ async def full_analysis(request: FullAnalysisRequest):
             counterargument_coverage=counterargument_coverage,
             bibliography=bibliography,
             issues=parsed_issues,
+            suggested_sources=suggested_sources,
+            research_summary=research_summary,
         )
     except json.JSONDecodeError as e:
         raise HTTPException(
